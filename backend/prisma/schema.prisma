@@ -14,15 +14,41 @@ enum Role {
   DRIVER
 }
 
+enum WalletTransactionType {
+  TOPUP
+  PAYMENT
+  REFUND
+}
+
+enum DeliveryMethod {
+  INSTANT
+  NEXT_DAY
+  REGULAR
+}
+
+enum OrderStatus {
+  SEDANG_DIKEMAS
+  MENUNGGU_PENGIRIM
+  SEDANG_DIKIRIM
+  PESANAN_SELESAI
+  DIKEMBALIKAN
+}
+
 model User {
-  id        String              @id @default(uuid())
-  username  String              @unique
-  email     String              @unique
-  password  String
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
-  roles     UserRole[]
-  reviews   ApplicationReview[]
+  id           String              @id @default(uuid())
+  username     String              @unique
+  email        String              @unique
+  password     String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  roles        UserRole[]
+  reviews      ApplicationReview[]
+  store        Store?
+  wallet       Wallet?
+  addresses    DeliveryAddress[]
+  cart         Cart?
+  buyerOrders  Order[]             @relation("BuyerOrders")
+  sellerOrders Order[]             @relation("SellerOrders")
 }
 
 model UserRole {
@@ -45,13 +71,137 @@ model ApplicationReview {
   createdAt    DateTime @default(now())
 }
 
+model Store {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  sellerId    String    @unique
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  products    Product[]
+  carts       Cart[]
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model Product {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String
-  price       Float
-  stock       Int
-  imageUrl    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  price       Decimal
+  stock       Int         @default(0)
+  imageUrl    String?
+  storeId     String
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  isActive    Boolean     @default(true)
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Wallet {
+  id           String              @id @default(uuid())
+  buyerId      String              @unique
+  buyer        User                @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  balance      Decimal             @default(0)
+  transactions WalletTransaction[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model WalletTransaction {
+  id          String                @id @default(uuid())
+  walletId    String
+  wallet      Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type        WalletTransactionType
+  amount      Decimal
+  description String
+  orderId     String?
+  createdAt   DateTime              @default(now())
+}
+
+model DeliveryAddress {
+  id            String   @id @default(uuid())
+  buyerId       String
+  buyer         User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  label         String
+  recipientName String
+  phone         String
+  addressLine   String
+  city          String
+  province      String
+  postalCode    String
+  isDefault     Boolean  @default(false)
+  orders        Order[]
+  createdAt     DateTime @default(now())
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  buyerId   String     @unique
+  buyer     User       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  storeId   String?
+  store     Store?     @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id                String               @id @default(uuid())
+  buyerId           String
+  buyer             User                 @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId          String
+  seller            User                 @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
+  storeId           String
+  store             Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  deliveryMethod    DeliveryMethod
+  deliveryAddressId String
+  deliveryAddress   DeliveryAddress      @relation(fields: [deliveryAddressId], references: [id], onDelete: Restrict)
+  subtotal          Decimal
+  discountAmount    Decimal              @default(0)
+  deliveryFee       Decimal
+  taxAmount         Decimal
+  totalAmount       Decimal
+  status            OrderStatus          @default(SEDANG_DIKEMAS)
+  voucherId         String?
+  promoId           String?
+  statusHistory     OrderStatusHistory[]
+  items             OrderItem[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName String
+  price       Decimal
+  quantity    Int
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
 }
