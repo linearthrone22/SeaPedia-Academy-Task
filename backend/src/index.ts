@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
+import apiRouter from './routes';
 
 // Load environment variables
 dotenv.config();
@@ -13,6 +14,9 @@ const PORT = process.env.PORT || 5000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Mount API routes
+app.use('/api', apiRouter);
 
 // Swagger Options
 const swaggerOptions: swaggerJSDoc.Options = {
@@ -28,8 +32,17 @@ const swaggerOptions: swaggerJSDoc.Options = {
         url: `http://localhost:${PORT}`,
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
-  apis: ['./src/routes/*.ts', './src/index.ts'],
+  apis: ['./src/routes/*.ts', './src/controllers/*.ts', './src/index.ts'],
 };
 
 const swaggerDocs = swaggerJSDoc(swaggerOptions);
