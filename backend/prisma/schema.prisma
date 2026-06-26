@@ -7,11 +7,51 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  ADMIN
+  SELLER
+  BUYER
+  DRIVER
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        String              @id @default(uuid())
+  username  String              @unique
+  email     String              @unique
   password  String
-  name      String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  roles     UserRole[]
+  reviews   ApplicationReview[]
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@unique([userId, role])
+}
+
+model ApplicationReview {
+  id           String   @id @default(uuid())
+  reviewerName String
+  rating       Int
+  comment      String
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  stock       Int
+  imageUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
